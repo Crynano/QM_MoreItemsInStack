@@ -365,3 +365,5 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /SteamMod
+/.idea/.idea.QM_TemplatePackage/.idea
+/template/src/.idea/.idea.ConfigurableStackSizes/.idea
