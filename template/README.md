@@ -1,23 +1,26 @@
-# Quasimorph QM_Template
+# Configurable More Items in Stack
 
-![thumbnail icon](media/thumbnail.png)
+More Items in Stack allows you to change the stack size of all item categories in the game.
 
-# Configuration
+This version is an updated take-over from Konich's original [More Items in Stack](https://steamcommunity.com/sharedfiles/filedetails/?id=3376790886)
+It now includes support for Mod Configuration Menu, which allows you to use the in-game UI to change the settings.
 
-The configuration file will be created on the first game run and can be found at `%AppData%\..\LocalLow\Magnum Scriptum Ltd\Quasimorph\QM_Template\config.json`.
+You can configure it under "Mods", in the Main Menu.
 
-|Name|Default|Description|
-|--|--|--|
-|FooKey|true|Some Description|
+## Compatibility
 
-## Key List
-The list of valid keyboard keys can be found  at the bottom of https://docs.unity3d.com/ScriptReference/KeyCode.html
-Beware that numbers 0-9 are Alpha0 - Alpha9.  Most of the other keys are as expected such as X for X.
-Use "None" to not bind the key.
+This mod should be compatible with any mod, except ones which modify stack sizes of items.
 
-# Support
-If you enjoy my mods and want to buy me a coffee, check out my [Ko-Fi](https://ko-fi.com/nbkredspy71915) page.
-Thanks!
+## Support
 
-# Source Code
-Source code is available on GitHub at https://github.com/$UserName$/QM_Template
+If you enjoy what I do and want me to keep doing it, you can check my [Ko-Fi](https://ko-fi.com/crynano) page.
+I accept suggestions or we can talk if you wish a for a specific mod.
+
+## Credits
+
+- Konich: Original mod.
+- Crynano: Update and Implementation.
+
+## Resources
+
+- Magnum Scriptum: Original UI, Sprites and Color Palette.

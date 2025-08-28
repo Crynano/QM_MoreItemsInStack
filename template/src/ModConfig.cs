@@ -1,70 +1,112 @@
-﻿using System;
+﻿using MGSC;
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using Newtonsoft.Json;
 using UnityEngine;
 
-namespace QM_Template
+namespace MoreItemsInStack
 {
     public class ModConfig
     {
-        public short AmmoStackSize = 100;
-        public short TrashStackSize = 100;
-        public short GrenadeStackSize = 100;
-        public short ConsumableStackSize = 100;
-        public short RepairStackSize = 100;
-        public short PlaceableStackSize = 100;
-        public short FixationStackSize = 100;
-        public short DeviceStackSize = 100;
-        public static ModConfig LoadConfig(string configPath)
+        public int DefaultStackSize { get; set; }
+        public int AmmoStackSize { get; set; }
+        public int TrashStackSize { get; set; }
+        public int GrenadeStackSize { get; set; }
+        public int ConsumableStackSize { get; set; }
+        public int RepairStackSize { get; set; }
+        public int PlaceableStackSize { get; set; }
+        public int FixationStackSize { get; set; }
+        public int DeviceStackSize { get; set; }
+
+        public ModConfig()
         {
-            ModConfig config;
+            
+        }
 
-            JsonSerializerSettings serializerSettings = new JsonSerializerSettings()
-            {
-                Formatting = Formatting.Indented,
-            };
+        public ModConfig(int defaultStackSize, int ammoStackSize, int trashStackSize, int grenadeStackSize, int consumableStackSize, int repairStackSize, int placeableStackSize, int fixationStackSize, int deviceStackSize)
+        {
+            DefaultStackSize = defaultStackSize;
+            AmmoStackSize = ammoStackSize;
+            TrashStackSize = trashStackSize;
+            GrenadeStackSize = grenadeStackSize;
+            ConsumableStackSize = consumableStackSize;
+            RepairStackSize = repairStackSize;
+            PlaceableStackSize = placeableStackSize;
+            FixationStackSize = fixationStackSize;
+            DeviceStackSize = deviceStackSize;
+        }
 
+        public void LoadConfigIni(string configPath)
+        {
+#if DEBUG
+            Debug.Log($"Loading Stack Config from \"{configPath}\"");
+#endif
             if (File.Exists(configPath))
             {
-                try
+                var sourceLines = File.ReadAllLines(configPath);
+
+                foreach (var line in sourceLines)
                 {
-                    string sourceJson = File.ReadAllText(configPath);
+                    string trimmedLine = line.Trim();
 
-                    config = JsonConvert.DeserializeObject<ModConfig>(sourceJson, serializerSettings);
-
-                    //Add any new elements that have been added since the last mod version the user had.
-                    string upgradeConfig = JsonConvert.SerializeObject(config, serializerSettings);
-
-                    if (upgradeConfig != sourceJson)
+                    if (trimmedLine.Contains('='))
                     {
-                        Debug.Log("Updating config with missing elements");
-                        Debug.Log(upgradeConfig);
-                        //re-write
-                        File.WriteAllText(configPath, upgradeConfig);
+                        // Key-value pair
+                        string[] keyValue = trimmedLine.Split(new[] { '=' }, 2);
+                        string key = keyValue[0].Trim();
+                        string value = keyValue[1].Trim();
+                        var convertedValue = ConvertValue(value);
+                        PropertyInfo propertyInfo = this.GetType().GetProperty(key, BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
+                        propertyInfo?.SetValue(this, convertedValue, null);
+#if DEBUG
+                        //Debug.Log($"Tried to set property of {propertyInfo?.Name} as {propertyInfo?.PropertyType} against {key} with value {convertedValue} of type {convertedValue.GetType()}");
+#endif
                     }
-
-
-                    return config;
-                }
-                catch (Exception ex)
-                {
-                    Debug.LogError("Error parsing configuration.  Ignoring config file and using defaults");
-                    Debug.LogException(ex);
-
-                    //Not overwriting in case the user just made a typo.
-                    config = new ModConfig();
-                    return config;
                 }
             }
-            else
+        }
+
+        public ModConfig LoadConfigJson(string configPath)
+        {
+            return File.Exists(configPath) ? JsonConvert.DeserializeObject<ModConfig>(File.ReadAllText(configPath)) : this;
+        }
+
+        public void SaveConfigJson(string configPath)
+        {
+            var data = JsonConvert.SerializeObject(this, Formatting.Indented);
+            File.WriteAllText(configPath, data);
+        }
+
+        public void LoadConfig(Dictionary<string, object> propertiesDictionary)
+        {
+            foreach (var nameValuePair in propertiesDictionary)
             {
-                config = new ModConfig();
-
-                string json = JsonConvert.SerializeObject(config, serializerSettings);
-                File.WriteAllText(configPath, json);
-
-                return config;
+                PropertyInfo propertyInfo = this.GetType().GetProperty(nameValuePair.Key, BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
+                propertyInfo?.SetValue(this, Convert.ChangeType(nameValuePair.Value, propertyInfo.PropertyType), null);
             }
+        }
+
+        private object ConvertValue(string value)
+        {
+            if (int.TryParse(value, out int intValue))
+            {
+                return intValue;
+            }
+
+            if (bool.TryParse(value, out bool boolValue))
+            {
+                return boolValue;
+            }
+
+            if (ColorUtility.TryParseHtmlString(value.Replace("\"", string.Empty), out Color colorParsed))
+            {
+                return colorParsed;
+            }
+
+            return value;
         }
     }
 }

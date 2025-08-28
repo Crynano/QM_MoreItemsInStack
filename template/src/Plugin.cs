@@ -1,45 +1,178 @@
-﻿using System.IO;
+﻿using MGSC;
+using ModConfigMenu;
+using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
-using HarmonyLib;
-using MGSC;
+using ModConfigMenu.Objects;
 using UnityEngine;
 
-namespace QM_Template
+namespace MoreItemsInStack
 {
     public static class Plugin
     {
-        public static string ModAssemblyName => Assembly.GetExecutingAssembly().GetName().Name;
-        public static string ConfigPath => Path.Combine(Application.persistentDataPath, ModAssemblyName, "config.json");
-        public static string ModPersistenceFolder => Path.Combine(Application.persistentDataPath, ModAssemblyName);
-        public static ModConfig Config { get; private set; }
+        private static string ModAssemblyName => Assembly.GetExecutingAssembly().GetName().Name;
+
+        private static string ModPersistenceFolder =>
+            Path.Combine($"{Application.persistentDataPath}/../Quasimorph_ModConfigs", ModAssemblyName);
+
+        private static string ConfigPath => Path.Combine(ModPersistenceFolder, "config.txt");
+        private static ModConfig Config { get; set; }
 
         [Hook(ModHookType.AfterConfigsLoaded)]
         public static void AfterConfig(IModContext context)
         {
+            AddLocalization();
+            
             Directory.CreateDirectory(ModPersistenceFolder);
-            Config = ModConfig.LoadConfig(ConfigPath);
-            new Harmony("$UserName$_" + ModAssemblyName).PatchAll();
+            
+            // Create config for MCM
+            Config = new ModConfig(-1,-1, -1, -1,-1, -1, -1, -1, -1);
+            Config = Config.LoadConfigJson(ConfigPath);
+            
+            List<ConfigValue> modConfigs = new List<ConfigValue>
+            {
+                new ConfigValue(key: "Info1", value: "css.modconfig.info.info1", header: "Info"),
+                new ConfigValue(key: "DefaultStackSize", value: Config.DefaultStackSize, defaultValue: -1, min: -1, max: 1000,
+                    label: "Default Stack Size", tooltip: "Applied to items not under any category",
+                    header: "Settings"),
+                new ConfigValue(key: "AmmoStackSize", value: Config.AmmoStackSize, defaultValue: -1, min: -1, max: 1000,
+                    label: "Ammo Stack Size", tooltip: "Affects all ammo types.", header: "Settings"),
+                new ConfigValue(key: "TrashStackSize", value: Config.TrashStackSize, defaultValue: -1, min: -1, max: 100,
+                    label: "Trash Stack Size", tooltip: "Affects trash items such as plastic and wire.",
+                    header: "Settings"),
+                new ConfigValue(key: "GrenadeStackSize", value: Config.GrenadeStackSize, defaultValue: -1, min: -1, max: 50,
+                    label: "Explosives Stack Size", tooltip: "Affects grenades and other throwable items.",
+                    header: "Settings"),
+                new ConfigValue(key: "ConsumableStackSize", value: Config.ConsumableStackSize, defaultValue: -1, min: -1, max: 100,
+                    label: "Consumable Stack Size",
+                    tooltip: "Affects healing items, food, and items that can be consumed.", header: "Settings"),
+                new ConfigValue(key: "RepairStackSize", value: Config.RepairStackSize, defaultValue: -1, min: -1, max: 1000,
+                    label: "Repair Items Stack Size", tooltip: "Affects scrap items used to repair other items.",
+                    header: "Settings"),
+                new ConfigValue(key: "PlaceableStackSize", value: Config.PlaceableStackSize, defaultValue: -1, min: -1, max: 100,
+                    label: "Placeable Stack Size", tooltip: "Affects turrets, mines and other placeable devices.",
+                    header: "Settings"),
+                new ConfigValue(
+                    key: "FixationStackSize", 
+                    value: Config.FixationStackSize, 
+                    defaultValue: -1, 
+                    min: -1, max: 100,
+                    label: "Fixation Stack Size", 
+                    tooltip: "Affects medicine that fixes wounds.", 
+                    header: "Settings"),
+                new ConfigValue(key: "DeviceStackSize", value: Config.DeviceStackSize, defaultValue: -1, min: -1, max: 100,
+                    label: "Devices Stack Size", tooltip: "Affects devices and other misc items.", header: "Settings"),
+                new ConfigValue(key: "About1", value: "Original Mod by <color=#ffffff>Konich</color>", header: "About"),
+                new ConfigValue(key: "About2", value: "Updated and mantained by <color=#ffff00>Crynano</color>",
+                    header: "About"),
+            };
 
+            ModConfigMenuAPI.RegisterModConfig("Configurable Stack Sizes", modConfigs,
+            (Dictionary<string, object> config, out string message) =>
+            {
+                try
+                {
+                    message = "All good";
+                    Config.LoadConfig(config);
+                    Config.SaveConfigJson(ConfigPath);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    message = ex.Message;
+                    return false;
+                }
+            });
+        }
+
+        [Hook(ModHookType.BeforeSaveLoaded)]
+        public static void LoadConfiguration()
+        {
+            // Apply configuration every time the user loads the game. This way, the game will have the default values when opening.
+            // This way, we can store the values of default items in config? Or it will not be applied with -1 so it wont matter.
+            ApplyConfig();
+        }
+
+        private static void ApplyConfig()
+        {
+            var now = DateTime.Now;
             foreach (BasePickupItemRecord record in Data.Items.Records)
             {
-                AmmoRecord ammoRecord = (record as CompositeItemRecord)?.GetRecord<AmmoRecord>();
-                TrashRecord trashRecord = (record as CompositeItemRecord)?.GetRecord<TrashRecord>();
-                ConsumableRecord consumableRecord = (record as CompositeItemRecord)?.GetRecord<ConsumableRecord>();
-                PlaceableDeviceRecord PlaceableDeviceRecord = (record as CompositeItemRecord)?.GetRecord<PlaceableDeviceRecord>();
-                FixationMedicineRecord FixationMedicineRecord = (record as CompositeItemRecord)?.GetRecord<FixationMedicineRecord>();
-                DeviceRecord DeviceRecord = (record as CompositeItemRecord)?.GetRecord<DeviceRecord>();
-                GrenadeRecord grenadeRecord = (record as CompositeItemRecord)?.GetRecord<GrenadeRecord>();
-                RepairRecord repairRecord = (record as CompositeItemRecord)?.GetRecord<RepairRecord>();
-                
-                if (ammoRecord != null) ammoRecord.MaxStack = Config.AmmoStackSize;
-                if (trashRecord != null) trashRecord.MaxStack = Config.TrashStackSize;
-                if (consumableRecord != null) consumableRecord.MaxStack = Config.ConsumableStackSize;
-                if (PlaceableDeviceRecord != null) PlaceableDeviceRecord.MaxStack = Config.PlaceableStackSize;
-                if (FixationMedicineRecord != null) FixationMedicineRecord.MaxStack = Config.FixationStackSize;
-                if (DeviceRecord != null) DeviceRecord.MaxStack = Config.DeviceStackSize;
-                if (grenadeRecord != null) grenadeRecord.MaxStack = Config.GrenadeStackSize;
-                if (repairRecord != null) repairRecord.MaxStack = Config.RepairStackSize;
+                if (!(record is CompositeItemRecord compositeItemRecord))
+                {
+                    continue;
+                }
+
+                AmmoRecord ammo = compositeItemRecord.GetRecord<AmmoRecord>();
+                if (ammo != null && Config.AmmoStackSize > 0)
+                {
+                    ammo.MaxStack = (short)Config.AmmoStackSize;
+                }
+
+                TrashRecord trash = compositeItemRecord.GetRecord<TrashRecord>();
+                if (trash != null && Config.TrashStackSize > 0)
+                {
+                    trash.MaxStack = (short)Config.TrashStackSize;
+                }
+
+                ConsumableRecord consumable = compositeItemRecord.GetRecord<ConsumableRecord>();
+                if (consumable != null && Config.ConsumableStackSize > 0)
+                {
+                    consumable.MaxStack = (short)Config.ConsumableStackSize;
+                }
+
+                PlaceableDeviceRecord placeable = compositeItemRecord.GetRecord<PlaceableDeviceRecord>();
+                if (placeable != null && Config.PlaceableStackSize > 0)
+                {
+                    placeable.MaxStack = (short)Config.PlaceableStackSize;
+                }
+
+                FixationMedicineRecord fixation = compositeItemRecord.GetRecord<FixationMedicineRecord>();
+                if (fixation != null && Config.FixationStackSize > 0)
+                {
+                    fixation.MaxStack = (short)Config.FixationStackSize;
+                }
+
+                DeviceRecord device = compositeItemRecord.GetRecord<DeviceRecord>();
+                if (device != null && Config.DeviceStackSize > 0)
+                {
+                    device.MaxStack = (short)Config.DeviceStackSize;
+                }
+
+                GrenadeRecord grenade = compositeItemRecord.GetRecord<GrenadeRecord>();
+                if (grenade != null && Config.GrenadeStackSize > 0)
+                {
+                    grenade.MaxStack = (short)Config.GrenadeStackSize;
+                }
+
+                RepairRecord repair = compositeItemRecord.GetRecord<RepairRecord>();
+                if (repair != null && Config.RepairStackSize > 0)
+                {
+                    repair.MaxStack = (short)Config.RepairStackSize;
+                }
             }
+
+            Debug.Log($"All stack sizes modified. Process took {(DateTime.Now - now).TotalSeconds:0.000} seconds.");
+        }
+
+        // private static string Base64Decode(string base64EncodedData)
+        // {
+        //     var base64EncodedBytes = System.Convert.FromBase64String(base64EncodedData);
+        //     return System.Text.Encoding.UTF8.GetString(base64EncodedBytes);
+        // }
+
+        private static void AddLocalization()
+        {
+            string key = "css.modconfig.info.info1";
+            foreach (var languageDic in MGSC.Localization.Instance.db)
+            {
+                languageDic.Value[key] =
+                    "To avoid a stack size from getting changed, set its value to <color=#50ff50>-1</color> or <color=#50ff50>0</color>.";
+            }
+
+            MGSC.Localization.Instance.db[Localization.Lang.Spanish][key] =
+                "Para evitar que el tamaño del stack cambie, pon el valor a -1 o 0.";
         }
     }
 }
