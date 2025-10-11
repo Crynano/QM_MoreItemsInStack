@@ -21,6 +21,9 @@ namespace MoreItemsInStack
         public int FixationStackSize { get; set; }
         public int DeviceStackSize { get; set; }
 
+        [JsonIgnore]
+        public Dictionary<string, int> OriginalSettings { get; set; }
+
         public ModConfig()
         {
             
