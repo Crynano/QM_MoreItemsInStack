@@ -1,13 +1,16 @@
 ﻿using MGSC;
 using ModConfigMenu;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Reflection;
-using ModConfigMenu.Objects;
-using UnityEngine;
 using ModConfigMenu.Contracts;
 using ModConfigMenu.Implementations;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Threading.Tasks;
+using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 namespace MoreItemsInStack
 {
@@ -95,66 +98,111 @@ namespace MoreItemsInStack
             ApplyConfig();
         }
 
+        [Hook(ModHookType.MainMenuStarted)]
+        public static void OnMainMenuLoaded(IModContext context)
+        {
+            Debug.LogWarning($"ConfigStock OnMainMenuLoaded(): Proceeding");
+            if (Config.OriginalSettings.Count <= 0)
+            {
+                StoreDefaultSettings();
+            }
+            else
+            {
+                SetDefaultSettings();
+            }
+        }
+
+        private static void StoreDefaultSettings()
+        {
+            // Foreach item, store its ID.
+            Debug.LogWarning("Storing default settings!");
+            Data.Items.Records.ToList().ForEach(record =>
+            {
+                if (record is IStackableRecord stackable)
+                    Config.OriginalSettings.Add(record.Id, stackable.MaxStack);
+            });
+        }
+
+        private static void SetDefaultSettings()
+        {
+            Debug.LogWarning("Setting default settings!");
+            Parallel.ForEach(Config.OriginalSettings, keyValue =>
+            {
+                var itemIndex = Data.Items.Ids.ToList().FindIndex(record => record == keyValue.Key);
+                if (itemIndex >= 0)
+                {
+                    var record = Data.Items.Records.ToArray()[itemIndex];
+                    if (record is CompositeItemRecord compositeItemRecord)
+                    {
+                        ApplyValueToRecord(compositeItemRecord);
+                    }
+                }
+            });
+        }
+
         private static void ApplyConfig()
         {
-            var now = DateTime.Now;
+            var now = Stopwatch.StartNew();
             foreach (BasePickupItemRecord record in Data.Items.Records)
             {
-                if (!(record is CompositeItemRecord compositeItemRecord))
+                if (record is CompositeItemRecord compositeItemRecord)
                 {
-                    continue;
-                }
-
-                AmmoRecord ammo = compositeItemRecord.GetRecord<AmmoRecord>();
-                if (ammo != null && Config.AmmoStackSize > 0)
-                {
-                    ammo.MaxStack = (short)Config.AmmoStackSize;
-                }
-
-                TrashRecord trash = compositeItemRecord.GetRecord<TrashRecord>();
-                if (trash != null && Config.TrashStackSize > 0)
-                {
-                    trash.MaxStack = (short)Config.TrashStackSize;
-                }
-
-                ConsumableRecord consumable = compositeItemRecord.GetRecord<ConsumableRecord>();
-                if (consumable != null && Config.ConsumableStackSize > 0)
-                {
-                    consumable.MaxStack = (short)Config.ConsumableStackSize;
-                }
-
-                PlaceableDeviceRecord placeable = compositeItemRecord.GetRecord<PlaceableDeviceRecord>();
-                if (placeable != null && Config.PlaceableStackSize > 0)
-                {
-                    placeable.MaxStack = (short)Config.PlaceableStackSize;
-                }
-
-                FixationMedicineRecord fixation = compositeItemRecord.GetRecord<FixationMedicineRecord>();
-                if (fixation != null && Config.FixationStackSize > 0)
-                {
-                    fixation.MaxStack = (short)Config.FixationStackSize;
-                }
-
-                DeviceRecord device = compositeItemRecord.GetRecord<DeviceRecord>();
-                if (device != null && Config.DeviceStackSize > 0)
-                {
-                    device.MaxStack = (short)Config.DeviceStackSize;
-                }
-
-                GrenadeRecord grenade = compositeItemRecord.GetRecord<GrenadeRecord>();
-                if (grenade != null && Config.GrenadeStackSize > 0)
-                {
-                    grenade.MaxStack = (short)Config.GrenadeStackSize;
-                }
-
-                RepairRecord repair = compositeItemRecord.GetRecord<RepairRecord>();
-                if (repair != null && Config.RepairStackSize > 0)
-                {
-                    repair.MaxStack = (short)Config.RepairStackSize;
+                    ApplyValueToRecord(compositeItemRecord);
                 }
             }
+            now.Stop();
+            UnityEngine.Debug.Log($"All stack sizes modified. Process took {now.ElapsedMilliseconds}ms.");
+        }
 
-            Debug.Log($"All stack sizes modified. Process took {(DateTime.Now - now).TotalSeconds:0.000} seconds.");
+        private static void ApplyValueToRecord(CompositeItemRecord compositeItemRecord)
+        {
+            AmmoRecord ammo = compositeItemRecord.GetRecord<AmmoRecord>();
+            if (ammo != null && Config.AmmoStackSize > 0)
+            {
+                ammo.MaxStack = (short)Config.AmmoStackSize;
+            }
+
+            TrashRecord trash = compositeItemRecord.GetRecord<TrashRecord>();
+            if (trash != null && Config.TrashStackSize > 0)
+            {
+                trash.MaxStack = (short)Config.TrashStackSize;
+            }
+
+            ConsumableRecord consumable = compositeItemRecord.GetRecord<ConsumableRecord>();
+            if (consumable != null && Config.ConsumableStackSize > 0)
+            {
+                consumable.MaxStack = (short)Config.ConsumableStackSize;
+            }
+
+            PlaceableDeviceRecord placeable = compositeItemRecord.GetRecord<PlaceableDeviceRecord>();
+            if (placeable != null && Config.PlaceableStackSize > 0)
+            {
+                placeable.MaxStack = (short)Config.PlaceableStackSize;
+            }
+
+            FixationMedicineRecord fixation = compositeItemRecord.GetRecord<FixationMedicineRecord>();
+            if (fixation != null && Config.FixationStackSize > 0)
+            {
+                fixation.MaxStack = (short)Config.FixationStackSize;
+            }
+
+            DeviceRecord device = compositeItemRecord.GetRecord<DeviceRecord>();
+            if (device != null && Config.DeviceStackSize > 0)
+            {
+                device.MaxStack = (short)Config.DeviceStackSize;
+            }
+
+            GrenadeRecord grenade = compositeItemRecord.GetRecord<GrenadeRecord>();
+            if (grenade != null && Config.GrenadeStackSize > 0)
+            {
+                grenade.MaxStack = (short)Config.GrenadeStackSize;
+            }
+
+            RepairRecord repair = compositeItemRecord.GetRecord<RepairRecord>();
+            if (repair != null && Config.RepairStackSize > 0)
+            {
+                repair.MaxStack = (short)Config.RepairStackSize;
+            }
         }
 
         // private static string Base64Decode(string base64EncodedData)

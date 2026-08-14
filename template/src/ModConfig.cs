@@ -22,7 +22,7 @@ namespace MoreItemsInStack
         public int DeviceStackSize { get; set; }
 
         [JsonIgnore]
-        public Dictionary<string, int> OriginalSettings { get; set; }
+        public Dictionary<string, int> OriginalSettings { get; set; } = new Dictionary<string, int>();
 
         public ModConfig()
         {
